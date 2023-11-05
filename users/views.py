@@ -4,6 +4,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from .serializers import UserSerializer
 from .models import User
 import jwt, datetime
+from .helpers import send_otp
 
 # Create your views here.
 class RegisterView(APIView):
@@ -11,6 +12,13 @@ class RegisterView(APIView):
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        phone_number = serializer.data['phone_number']
+        otp = send_otp(phone_number)
+        if otp is None:
+            raise AuthenticationFailed('OTP not sent! Please try again')
+        user = User.objects.filter(phone_number=phone_number).first()
+        user.otp = otp
+        user.save()
         return Response({"message": "User created successfully", "data": serializer.data}, status=201)
     
 class LoginView(APIView):
@@ -25,6 +33,9 @@ class LoginView(APIView):
         
         if not user.check_password(password):
             raise AuthenticationFailed('Wrong Password!')
+        
+        if not user.is_verified:
+            raise AuthenticationFailed('Account is not verified!')
         
         
         payload = {
@@ -43,6 +54,42 @@ class LoginView(APIView):
         }
         return response
     
+class VerifyPhoneNumber(APIView):
+    def post(self, request):
+        phone_number = request.data['phone_number']
+        otp_sent = request.data['otp']
+        otp_sent = int(otp_sent)
+        
+        user = User.objects.filter(phone_number=phone_number).first()
+        print(user.otp)
+        
+        if user is None:
+            raise AuthenticationFailed('User not found!')
+        
+        if otp_sent != user.otp:
+            raise AuthenticationFailed('Invalid OTP!')
+        
+        user.is_verified = True
+        user.save()
+        
+        return Response({"message": "Phone number verified successfully"}, status=200)
+    
+class ResendOTP(APIView):
+    def get(self, request):
+        phone_number = request.data['phone_number']
+        
+        user = User.objects.filter(phone_number=phone_number).first()
+        
+        if user is None:
+            raise AuthenticationFailed('User not found!')
+        
+        otp = send_otp(phone_number)
+        if otp is None:
+            raise AuthenticationFailed('OTP not sent! Please try again')
+        user.otp = otp
+        user.save()
+        return Response({"message": "OTP sent successfully"}, status=200)
+    
     
 
 class UserView(APIView):
@@ -54,7 +101,7 @@ class UserView(APIView):
             raise AuthenticationFailed('Unauthenticated!')
 
         try:
-            payload = jwt.decode(token, 'secret', algorithm=['HS256'])
+            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('Unauthenticated!')
 
