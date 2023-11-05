@@ -9,10 +9,13 @@ class UserSerializer(serializers.ModelSerializer):
             'password':{'write_only':True}
         }
         
-    def create(self, validated_data):
-        password = validated_data.pop('password', None)
-        instance = self.Meta.model(**validated_data)
-        if password is not None:
-            instance.set_password(password)
-        instance.save()
-        return instance
+    def save(self):
+        password = self.validated_data['password']
+        if User.objects.filter(phone_number=self.validated_data['phone_number']).exists():
+            raise serializers.ValidationError({'error':'User with same phone_number has already been registered'})
+        if password is None:
+            raise serializers.ValidationError({'error':'Password is required'})
+        account=User(phone_number=self.validated_data['phone_number'],name=self.validated_data['name'],email=self.validated_data['email'],gender=self.validated_data['gender'],age=self.validated_data['age'])
+        account.set_password(password)
+        account.save()
+        return account
