@@ -9,6 +9,11 @@ from openai import OpenAI
 import base64
 import tempfile
 import whisper
+from pydub import AudioSegment
+from django.http import JsonResponse
+import io
+import json
+
 
 class ChatView(APIView):
     def __init__(self, *args, **kwargs):
@@ -43,13 +48,28 @@ class ChatView(APIView):
         )
 
         return response.choices[0].message.content
+    
+    def put(self,request):
+        audio_file = request.FILES.get('audio_data')
+        if audio_file:
+            audio_data = audio_file.read()
+            audio_format = request.POST.get('type', 'wav')
+
+            # Convert audio data to AudioSegment
+            audio_segment = AudioSegment.from_file(io.BytesIO(audio_data))
+
+            # Save AudioSegment as MP3 file
+            audio_segment.export('audio.mp3', format='mp3')
+
+            return JsonResponse({'message': 'Audio file saved as MP3'})
+        else:
+            return JsonResponse({'error': 'No audio file provided'}, status=400)
+
 
     def post(self,request):
+        print(request.data)
         if not request.data['pulse_rate']:
             return Response({"message":"Please provide pulse_rate"},400)
-        
-        if not request.data['blood_pressure']:
-            return Response({"message":"Please provide blood pressure"},400)
         
         if not request.data['oxygen_level']:
             return Response({"message":"Please provide oxygen level"},400)
@@ -65,17 +85,32 @@ class ChatView(APIView):
         if request.data['text']!="":
             symptoms=request.data['text']
         else:
-            audio_data = request.data['audio']
-
             # Load the model
             self.load_model()
-
-            result = self.model.transcribe(audio_data,language="english")
+            print("Model loaded")
+            result = self.model.transcribe("audio.mp3",language="english")
             print(f' The text in video: \n {result["text"]}')
             symptoms=result["text"]
-        user_input = f"Symptoms: \"{symptoms}\", Pulse Rate: \"{pulse_rate}\", Blood Pressure: \"{blood_pressure}\", Oxygen level: \"{oxygen_level}\", Temperature: \"{temperature}\""
+        user_input = f"Symptoms: \"{symptoms}\", Pulse Rate: \"{pulse_rate}\", Oxygen level: \"{oxygen_level}\", Temperature: \"{temperature}\""
 
 
         advice = self.get_medical_advice(user_input)
-        print(advice)   
-        return Response({"message":advice},200)
+        print("Advice:", advice)
+
+    # Split the advice string to extract each attribute
+        
+        advice_attributes = advice.split("\n")
+        if(len(advice_attributes)<4):
+            res={"predicted_disease": None,"treatment_plan": None,"prescribed_drugs": None,"specialization": None}
+
+            return Response({"message":res},200)
+        
+        print("Advice Attributes:", advice_attributes)
+        predicted_disease = advice_attributes[0].split(": ")[1].strip('"').replace('",', '')
+        treatment_plan = advice_attributes[1].split(": ")[1].strip('"').replace('",', '')
+        prescribed_drugs = advice_attributes[2].split(": ")[1].strip('"').replace('",', '')
+        specialization = advice_attributes[3].split(": ")[1].strip('"').replace('",', '')
+
+        res={"predicted_disease": predicted_disease,"treatment_plan": treatment_plan,"prescribed_drugs": prescribed_drugs,"specialization": specialization}
+
+        return Response({"message":res},200)
