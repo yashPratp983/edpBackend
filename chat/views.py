@@ -13,13 +13,35 @@ from pydub import AudioSegment
 from django.http import JsonResponse
 import io
 import json
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import ConversationChain 
+import base64
+from tensorflow.keras.models import load_model
+import tensorflow as tf
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferWindowMemory
 
+
+review_template = """\
+For the following text, extract the following information:
+
+Symtoms: what are the symptoms of the patient?
+Answer output them as a comma separated Python list.
+
+Format the output as JSON with the following keys:
+Symptoms
+
+text: {text}
+"""
+
+os.environ['OPENAI_API_KEY'] = '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'
 
 class ChatView(APIView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client=OpenAI(api_key='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')
         self.model=None
+        self.model2=None
         # self.assistant_id=create_assistant(self.client)
     def load_model(self):
         # Check if the model is already loaded in the cache
@@ -68,6 +90,28 @@ class ChatView(APIView):
 
     def post(self,request):
         print(request.data)
+        if request.data['image']:
+            image_path = 'output_image.jpg'
+            base64_image_data = request.data['image'].replace('data:image/jpeg;base64,', '')
+            decoded_image_data = base64.b64decode(base64_image_data)
+            with open('output_image.jpg', 'wb') as f:
+                f.write(decoded_image_data)
+            
+            self.load_image_model()
+            image = tf.io.read_file(image_path)
+            image = tf.io.decode_jpeg(image, channels=3)
+            image = tf.image.convert_image_dtype(image, tf.float32)
+            image = tf.image.resize(image, (224, 224))  # Resize the image as needed
+            image = tf.expand_dims(image, axis=0)
+            prediction = self.model2.predict(image)
+            prediction = prediction[0]
+            sum=0
+            for i in range(len(prediction)):
+                sum+=prediction[i]
+            
+            print(len(prediction))
+            return Response({"message":prediction},200)
+
         if not request.data['pulse_rate']:
             return Response({"message":"Please provide pulse_rate"},400)
         
@@ -89,7 +133,32 @@ class ChatView(APIView):
             print("Model loaded")
             result = self.model.transcribe("audio.mp3",language="english")
             print(f' The text in video: \n {result["text"]}')
-            symptoms=result["text"]
+            txt=result["text"]
+            prompt = ChatPromptTemplate.from_template(review_template)
+            turbo_llm_memory = ChatOpenAI(
+                temperature=0,
+                model_name='gpt-4-turbo'
+            )
+            prompt_txt = prompt.format_messages(text=txt)
+            memory = ConversationBufferWindowMemory(k=1)
+            memory.save_context({"input": "Hi"},
+                                {"output": "What's up"})
+            memory.save_context({"input": "Not much, just hanging"},
+                                {"output": "Cool"})
+            memory.load_memory_variables({})
+            memory_llm_conversation = ConversationChain(
+                llm=turbo_llm_memory, 
+                verbose=True
+            )
+            res = memory_llm_conversation(prompt_txt)
+            symptoms=res['response']
+            print(symptoms,"symptoms")
+            a=symptoms.split(":")
+            a=a[1]
+            a.replace('"','')
+            a.replace('}','')
+            symptoms=a
+            print(symptoms,"symptoms")
         user_input = f"Symptoms: \"{symptoms}\", Pulse Rate: \"{pulse_rate}\", Oxygen level: \"{oxygen_level}\", Temperature: \"{temperature}\""
 
 
