@@ -25,7 +25,7 @@ class ChatView(APIView):
         # Check if the model is already loaded in the cache
         if not self.model:
             # Load the model here
-            self.model = whisper.load_model("tiny")
+            self.model = whisper.load_model("/home/nomnom/Documents/models/medium.pt")
 
     def get_medical_advice(self,user_input):
         response = self.client.chat.completions.create(
