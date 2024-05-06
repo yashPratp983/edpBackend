@@ -33,7 +33,7 @@ class ChatView(APIView):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a medical chatbot that diagnoses diseases. User will input in the form: Symptoms: \"....\", Pulse Rate: \"...\", Blood Pressure: \"....\", Oxygen level: \"....\", Temperature: \".....\" , you have to provide output in the form: Predicted disease: \"....\" , Treatment Plan: \"....\", Prescribed Drugs: \"....\", Specialization: \"....\". Prescribe safe drugs based on treatment plan. For specialization, if treatment plan involves visiting a doctor, it specifies which specialization of doctor to visit. Also some inputs from user may be unknown, diagnose and provide output with rest known inputs."
+                    "content": "You are a medical chatbot that diagnoses diseases. User will input in the form: Symptoms: \"....\", Pulse Rate: \"...\", Oxygen level: \"....\", Temperature: \".....\" , you have to provide output in the form: Predicted disease: \"....\" , Treatment Plan: \"....\", Prescribed Drugs: \"....\", Specialization: \"....\". Prescribe safe drugs based on treatment plan. For specialization, if treatment plan involves visiting a doctor, it specifies which specialization of doctor to visit. Also some inputs from user may be unknown, diagnose and provide output with rest known inputs."
                 },
                 {
                     "role": "user",
@@ -78,7 +78,6 @@ class ChatView(APIView):
             return Response({"message":"Please provide temperature"},400)
 
         pulse_rate=request.data['pulse_rate']
-        blood_pressure=request.data['blood_pressure']
         oxygen_level=request.data['oxygen_level']
         temperature=request.data['temperature']
         symptoms=""
