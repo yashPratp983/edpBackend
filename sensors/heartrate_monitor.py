@@ -35,7 +35,7 @@ def run_sensor():
 
         if len(ir_data) == 100:
             bpm, valid_bpm, spo2, valid_spo2 = hrcalc.calc_hr_and_spo2(ir_data, red_data)
-            if valid_bpm and (60 < bpm < 200):
+            if valid_bpm and (60 < bpm < 120):
                 bpmData += bpm
                 bpmCount += 1
             if valid_spo2 and (80 <= spo2 <= 100):
