@@ -162,7 +162,7 @@ class ChatView(APIView):
         # Check if the model is already loaded in the cache
         if not self.model:
             # Load the model here
-            self.model = whisper.load_model("models/base.pt")
+            self.model = whisper.load_model("openai/whisper-base")
 
     def load_image_model(self):
         # Check if the model is already loaded in the cache
