@@ -34,7 +34,7 @@ Symptoms
 text: {text}
 """
 
-os.environ['OPENAI_API_KEY'] = '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'
+# os.environ['OPENAI_API_KEY'] = ''
 
 data="""Subfolder: acanthosis nigricans, Number of Images: 92
 Subfolder: acne, Number of Images: 183
@@ -162,13 +162,13 @@ class ChatView(APIView):
         # Check if the model is already loaded in the cache
         if not self.model:
             # Load the model here
-            self.model = whisper.load_model("/home/nomnom/Documents/models/medium.pt")
+            self.model = whisper.load_model("models/base.pt")
 
     def load_image_model(self):
         # Check if the model is already loaded in the cache
         if not self.model2:
             # Load the model here
-            self.model2 = load_model('/home/yash/Downloads/v1.keras')
+            self.model2 = load_model('models/v1.keras')
 
     def get_medical_advice(self,user_input):
         response = self.client.chat.completions.create(

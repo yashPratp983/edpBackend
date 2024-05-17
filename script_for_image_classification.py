@@ -141,7 +141,7 @@ def get_medical_advice_for_disease(user_input):
 
     return response.choices[0].message.content
 
-image_path = "out.jpg"
+image_path = "edpBackend/out.jpg"
 image = tf.io.read_file(image_path)
 image = tf.io.decode_jpeg(image, channels=3)
 image = tf.image.convert_image_dtype(image, tf.float32)
